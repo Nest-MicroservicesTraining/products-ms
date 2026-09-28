@@ -4,39 +4,21 @@
 
 # Products Microservice
 
-## Project setup
+## Dev
 
-```bash
-$ npm install
-```
+1. Clonar el repositorio
+2. Instalar las dependencias
 
-## Compile and run the project
+   ```bash
+   $ npm install
+   ```
 
-```bash
-# development
-$ npm run start
+3. Crear un archivo `.env` basado en el archivo `.env.template`
+4. Ejecutar la migracion de prisma `npx prisma migrate dev`
+5. Generar la base de datos `npx prisma generate`
+6. Ejecutar `npm run start:dev` para ejecutar en modo watch
 
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
-```
-
-## Run tests
-
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Database
+## update Database
 
 ```bash
 # migration
