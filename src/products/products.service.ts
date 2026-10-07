@@ -1,12 +1,10 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { PrismaService } from '@/prisma.service';
 import { PaginationDto } from '@/common/dto/pagination.dto';
+import { RpcException } from '@nestjs/microservices';
+import { Prisma } from '@/generated/prisma/client';
 
 const SELECT = {
   available: false,
@@ -21,11 +19,33 @@ const SELECT = {
 export class ProductsService {
   constructor(private prisma: PrismaService) {}
 
+  private handleDuplicateName(error: unknown, name: string): never {
+    const { code } = error as Prisma.PrismaClientKnownRequestError;
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      code === 'P2002'
+    ) {
+      console.log(`Duplicate name error for product: ${name}`);
+      throw new RpcException({
+        message: `A product with the name ${name} already exists`,
+        status: HttpStatus.BAD_REQUEST,
+      });
+    }
+    console.error(
+      'Unexpected error occurred:',
+      (error as { code: string }).code,
+    );
+    throw error;
+  }
+
   async create(createProductDto: CreateProductDto) {
-    const product = await this.prisma.product.create({
-      data: createProductDto,
-    });
-    return product;
+    try {
+      return await this.prisma.product.create({
+        data: createProductDto,
+      });
+    } catch (error) {
+      this.handleDuplicateName(error, createProductDto.name);
+    }
   }
 
   async findAll(paginationDto: PaginationDto) {
@@ -57,7 +77,10 @@ export class ProductsService {
     });
 
     if (!product)
-      throw new NotFoundException(`Product with ID #${id} not found`);
+      throw new RpcException({
+        message: `Product with ID #${id} not found`,
+        status: HttpStatus.NOT_FOUND,
+      });
     return product;
   }
 
@@ -65,14 +88,23 @@ export class ProductsService {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { id: _, ...updateData } = updateProductDto; // Exclude 'id' from the update data
     if (Object.keys(updateData).length === 0) {
-      throw new BadRequestException('No update fields provided');
+      // throw new BadRequestException('No update fields provided');
+      throw new RpcException({
+        message: 'No update fields provided',
+        status: HttpStatus.BAD_REQUEST,
+      });
     }
     await this.findOne(id);
-    return this.prisma.product.update({
-      where: { id },
-      data: updateData,
-      select: SELECT,
-    });
+
+    try {
+      return await this.prisma.product.update({
+        where: { id },
+        data: updateData,
+        select: SELECT,
+      });
+    } catch (error) {
+      this.handleDuplicateName(error, updateData.name ?? '');
+    }
   }
 
   async remove(id: number) {
