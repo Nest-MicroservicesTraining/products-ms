@@ -119,4 +119,22 @@ export class ProductsService {
     // });
     // return `This action removes a #${id} product`;
   }
+
+  async validateProducts(ids: number[]) {
+    ids = Array.from(new Set(ids));
+    const products = await this.prisma.product.findMany({
+      where: {
+        id: { in: ids },
+      },
+      select: SELECT,
+    });
+
+    if (products.length !== ids.length) {
+      throw new RpcException({
+        message: 'One or more products not found or unavailable',
+        status: HttpStatus.NOT_FOUND,
+      });
+    }
+    return products;
+  }
 }
