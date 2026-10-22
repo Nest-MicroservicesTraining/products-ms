@@ -49,7 +49,7 @@ lerna-debug.log*
 .tmp
 
 # base de datos
-*.db
+# *.db
 
 # Runtime data
 pids
